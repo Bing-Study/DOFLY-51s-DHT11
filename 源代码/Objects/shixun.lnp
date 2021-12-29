@@ -1,0 +1,9 @@
+".\Objects\1602.obj",
+".\Objects\delay.obj",
+".\Objects\uart.obj",
+".\Objects\main.obj",
+".\Objects\DHT11.obj",
+".\Objects\fengmingqi.obj",
+".\Objects\24c02.obj" 
+TO ".\Objects\shixun" 
+PRINT(".\Listings\shixun.m51")

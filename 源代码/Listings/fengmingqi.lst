@@ -1,0 +1,45 @@
+C51 COMPILER V9.59.0.0   FENGMINGQI                                                        12/14/2021 16:50:09 PAGE 1   
+
+
+C51 COMPILER V9.59.0.0, COMPILATION OF MODULE FENGMINGQI
+OBJECT MODULE PLACED IN .\Objects\fengmingqi.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE fengmingqi.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listing
+                    -s\fengmingqi.lst) TABS(2) OBJECT(.\Objects\fengmingqi.obj)
+
+line level    source
+
+   1          
+   2          #include<reg52.h> //包含头文件，一般情况不需要改动，头文件包含特殊功能寄存器的定义
+   3          #include<delay.h>
+   4          #include<shot.h>
+   5          
+   6          
+   7          
+   8          
+   9          /*------------------------------------------------
+  10                              主函数
+  11          ------------------------------------------------*/
+  12          void shout()
+  13          {
+  14   1        int i=0;
+  15   1       for(i;i<100;i++)
+  16   1            { 
+  17   2            DelayMs(3);
+  18   2            SPK=!SPK;
+  19   2          }
+  20   1      }
+  21          
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     32    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----       2
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

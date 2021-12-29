@@ -1,0 +1,197 @@
+C51 COMPILER V9.59.0.0   SD                                                                12/07/2021 09:27:53 PAGE 1   
+
+
+C51 COMPILER V9.59.0.0, COMPILATION OF MODULE SD
+OBJECT MODULE PLACED IN .\Objects\sd.obj
+COMPILER INVOKED BY: C:\Keil_v5\C51\BIN\C51.EXE sd.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\sd.lst
+                    -) TABS(2) OBJECT(.\Objects\sd.obj)
+
+line level    source
+
+   1          
+   2          #include <sd.h>
+   3          unsigned int const len = 512;//扇区大小
+   4          void DELAY_MS (unsigned int a){
+   5   1        unsigned int i;
+   6   1        while( --a != 0){
+   7   2          for(i = 0; i < 600; i++);
+   8   2        }
+   9   1      }
+  10           
+  11           
+  12           
+  13          //***********模拟spi写函数
+  14          void SPI_W(unsigned char Data){
+  15   1        unsigned char i;
+  16   1        for(i = 0; i<8; i++){
+  17   2          Data <<= 1;
+  18   2          CLK = 0;
+  19   2          DI = CY;
+  20   2          CLK = 1;
+  21   2        };
+  22   1        DI = 1;
+  23   1      }
+  24           
+  25          //***********模拟spi读函数
+  26          unsigned char SPI_R(){
+  27   1        unsigned char Data,i;
+  28   1        DO = 1;//设置DO接口为输入状态
+  29   1        for(i = 0; i<8; i++){
+  30   2          Data <<= 1;
+  31   2          CLK = 0;
+  32   2          CLK = 1;
+  33   2          Data |= DO;
+  34   2        };
+  35   1        return Data;
+  36   1      }
+  37           
+  38           
+  39          //**************读sd卡回应
+  40          unsigned char SD_Response(){
+  41   1        unsigned char i,Response;
+  42   1        for(i = 0; i<10; i++){
+  43   2          Response = SPI_R();
+  44   2          if(Response == 0x00)
+  45   2            break;
+  46   2          if(Response == 0x01)
+  47   2            break;
+  48   2        };
+  49   1        return Response;
+  50   1      }
+  51           
+  52           
+  53          //***************向SD发命令
+  54          void SD_Cmd(unsigned char Cmd, unsigned long Argument, unsigned char CRC){
+C51 COMPILER V9.59.0.0   SD                                                                12/07/2021 09:27:53 PAGE 2   
+
+  55   1        unsigned char arg[4];
+  56   1        arg[0] = (unsigned char)Argument;
+  57   1        arg[1] = (unsigned char)(Argument >> 8);
+  58   1        arg[2] = (unsigned char)(Argument >> 16);
+  59   1        arg[3] = (unsigned char)(Argument >> 24);
+  60   1       
+  61   1        SPI_W(Cmd | 0x40);
+  62   1        SPI_W(arg[3]);
+  63   1        SPI_W(arg[2]);
+  64   1        SPI_W(arg[1]);
+  65   1        SPI_W(arg[0]);
+  66   1        SPI_W(CRC);
+  67   1      }
+  68           
+  69           
+  70           
+  71          //*************SD卡初始化
+  72          unsigned char SD_Init(){
+  73   1        unsigned int delay = 0;
+  74   1        unsigned char i;
+  75   1        unsigned char Response = 0xff;
+  76   1        
+  77   1        CS = 1;
+  78   1        for(i = 0; i<10; i++){
+  79   2          SPI_W(0xff);//上电后给74个以上的时间脉冲
+  80   2        };
+  81   1       
+  82   1        CS = 0;
+  83   1        SD_Cmd(0x00, 0, 0x95);//命令CMD0,复位SD卡
+  84   1       
+  85   1        //等待复位成功
+  86   1        i = 0;
+  87   1        while(SD_Response() != 0x01){//等待SD卡回应信号
+  88   2          i++;
+  89   2          if(i > 100){
+  90   3            return 0;//失败返回0
+  91   3          };
+  92   2        };
+  93   1       
+  94   1        CS = 1;
+  95   1        SPI_W(0xff);//关片选后写8个空脉冲，SD卡复位完毕
+  96   1       
+  97   1        //设置SPI
+  98   1        i = 0;
+  99   1        CS = 0;
+ 100   1        while(Response != 0x00){//循环等待成功回应，若成功，回应信号为0x00
+ 101   2          SD_Cmd(0x01, 0, 0xff);//CMD1,将SD卡设置为SPI模式，无需CRC校验，填入0xff
+ 102   2          Response = SD_Response();
+ 103   2          if(i > 100){
+ 104   3            return 0;//尝试100次,失败返回0
+ 105   3          };
+ 106   2        };
+ 107   1        CS = 1;
+ 108   1       
+ 109   1        SPI_W(0xff);//给8个空脉冲
+ 110   1        return 1;
+ 111   1      }
+ 112           
+ 113           
+ 114          //***************SD卡写入数据块
+ 115          unsigned char SD_Block_W(unsigned char* block, unsigned long address){
+ 116   1        unsigned int i;
+C51 COMPILER V9.59.0.0   SD                                                                12/07/2021 09:27:53 PAGE 3   
+
+ 117   1        unsigned char Response_Write;
+ 118   1        CS =0;
+ 119   1        SD_Cmd(0x18, address, 0xff);//CMD18,块写入命令
+ 120   1        while(SD_Response() != 0x00);//循环等待命令回应0x00
+ 121   1        for(i = 0; i<10; i++){
+ 122   2          SPI_W(0xff);//写入一定量空脉冲
+ 123   2        };
+ 124   1       
+ 125   1        SPI_W(0xfe);//0xfe为块头部，后面跟512b字节，+2bCRC(0xff,0xff)
+ 126   1       
+ 127   1        for(i=0; i<len; i++){
+ 128   2          SPI_W(block[i]);//写入512b字节
+ 129   2        };
+ 130   1       
+ 131   1        SPI_W(0xff);
+ 132   1        SPI_W(0xff);
+ 133   1       
+ 134   1        Response_Write = SPI_R()&0x0f;//写入CRC码后SD卡会回应一个xxx0,1001
+ 135   1        while(SPI_R() == 0);//等待SD卡回应
+ 136   1       
+ 137   1        CS = 1;
+ 138   1        SPI_W(0xff);//写入8个空脉冲
+ 139   1       
+ 140   1        if(Response_Write == 0x05){
+ 141   2          return 1;
+ 142   2        }else{
+ 143   2          return 0;
+ 144   2        };
+ 145   1      }
+ 146           
+ 147          //****************从sd卡读数据块
+ 148          void SD_Block_R(unsigned char* block, unsigned long address){
+ 149   1        unsigned int i;
+ 150   1       
+ 151   1        CS = 0;
+ 152   1        SD_Cmd(0x11, address, 0xff);//CMD11,数据块读写命令，
+ 153   1       
+ 154   1        while(SD_Response()!=0x00);//循环等待命令回应0x00
+ 155   1       
+ 156   1        while(SPI_R() != 0xfe); //0xfe为块读出的头， 后面紧跟512字节的数据块+2字节的CRC
+ 157   1       
+ 158   1        for(i=0; i<len ; i++){
+ 159   2          block[i] = SPI_R();//读数据
+ 160   2        };
+ 161   1       
+ 162   1        SPI_R();
+ 163   1        SPI_R();//两个字节的CRC。舍弃
+ 164   1       
+ 165   1        CS =1;
+ 166   1        SPI_R();//8个空脉冲
+ 167   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    552    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      2      26
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+C51 COMPILER V9.59.0.0   SD                                                                12/07/2021 09:27:53 PAGE 4   
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
